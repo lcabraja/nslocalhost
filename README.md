@@ -52,6 +52,21 @@ If Caddy is not in `PATH`:
 bunx --package git+https://github.com/lcabraja/nslocalhost.git nslocalhost --path-to-caddy /opt/homebrew/bin/caddy
 ```
 
+If port `80` is already occupied by another process, stop that process or choose a different public listener port:
+
+```sh
+bunx --package git+https://github.com/lcabraja/nslocalhost.git nslocalhost --port 8080
+```
+
+The command is idempotent:
+
+```text
+nslocalhost: setup is already complete
+nslocalhost: setup initiating...
+nslocalhost: setup complete
+nslocalhost: something is already listening on port 80. Stop it, or choose another port with --port <port>.
+```
+
 The installer writes:
 
 ```text

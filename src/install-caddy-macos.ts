@@ -8,6 +8,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -19,13 +20,30 @@ type InstallCaddyOptions = {
   label: string;
   configPath: string;
   plistPath: string;
+  port: number;
   stdoutPath: string;
   stderrPath: string;
+};
+
+type CaddyConfig = {
+  apps?: {
+    http?: {
+      servers?: Record<string, {
+        listen?: string[];
+        [key: string]: unknown;
+      }>;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 };
 
 const DEFAULT_CADDY_LABEL = "dev.nslocalhost.caddy";
 const DEFAULT_CADDY_CONFIG_PATH = "/Library/Application Support/nslocalhost/caddy/bootstrap.json";
 const DEFAULT_CADDY_PLIST_PATH = `/Library/LaunchDaemons/${DEFAULT_CADDY_LABEL}.plist`;
+const DEFAULT_CADDY_SERVER_NAME = "nslocalhost";
+const DEFAULT_CADDY_PORT = 80;
 const DEFAULT_CADDY_STDOUT_PATH = "/var/log/nslocalhost-caddy.log";
 const DEFAULT_CADDY_STDERR_PATH = "/var/log/nslocalhost-caddy.error.log";
 
@@ -44,6 +62,15 @@ async function installCaddyMacos(options: InstallCaddyOptions): Promise<void> {
     throw new Error("only supports macOS.");
   }
 
+  if (await isSetupComplete(options)) {
+    console.log("nslocalhost: setup is already complete");
+    return;
+  }
+
+  if (await isPortInUse(options.port)) {
+    throw new Error(`something is already listening on port ${options.port}. Stop it, or choose another port with --port <port>.`);
+  }
+
   const caddyPath = resolveCaddyPath(options.pathToCaddy);
   const bundledConfigPath = getBundledCaddyConfigPath();
   const plist = createLaunchDaemonPlist({
@@ -55,11 +82,13 @@ async function installCaddyMacos(options: InstallCaddyOptions): Promise<void> {
   });
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "nslocalhost-caddy-"));
 
+  console.log("nslocalhost: setup initiating...");
+
   try {
     const tempConfigPath = path.join(tempDir, "bootstrap.json");
     const tempPlistPath = path.join(tempDir, `${options.label}.plist`);
 
-    writeFileSync(tempConfigPath, readFileSync(bundledConfigPath, "utf8"));
+    writeFileSync(tempConfigPath, createBootstrapConfig(bundledConfigPath, options.port));
     writeFileSync(tempPlistPath, plist);
 
     await sudo("install", ["-d", "-m", "0755", path.dirname(options.configPath)]);
@@ -73,9 +102,15 @@ async function installCaddyMacos(options: InstallCaddyOptions): Promise<void> {
     rmSync(tempDir, { force: true, recursive: true });
   }
 
+  if (!(await isSetupComplete(options))) {
+    throw new Error("setup finished, but Caddy did not report the expected nslocalhost config. Check the service logs.");
+  }
+
+  console.log("nslocalhost: setup complete");
   console.log(`nslocalhost: installed ${options.label}`);
   console.log(`nslocalhost: caddy: ${caddyPath}`);
   console.log(`nslocalhost: config: ${options.configPath}`);
+  console.log(`nslocalhost: port: ${options.port}`);
   console.log(`nslocalhost: logs: ${options.stdoutPath}, ${options.stderrPath}`);
   console.log(`nslocalhost: admin API: ${DEFAULT_ADMIN_URL}`);
 }
@@ -85,6 +120,7 @@ function parseArgs(args: string[]): InstallCaddyOptions {
     label: DEFAULT_CADDY_LABEL,
     configPath: DEFAULT_CADDY_CONFIG_PATH,
     plistPath: DEFAULT_CADDY_PLIST_PATH,
+    port: DEFAULT_CADDY_PORT,
     stdoutPath: DEFAULT_CADDY_STDOUT_PATH,
     stderrPath: DEFAULT_CADDY_STDERR_PATH,
   };
@@ -106,6 +142,8 @@ function parseArgs(args: string[]): InstallCaddyOptions {
       options.configPath = readValue(args, ++index, arg);
     } else if (arg === "--plist-path") {
       options.plistPath = readValue(args, ++index, arg);
+    } else if (arg === "--port") {
+      options.port = parsePort(readValue(args, ++index, arg));
     } else if (arg === "--stdout-path") {
       options.stdoutPath = readValue(args, ++index, arg);
     } else if (arg === "--stderr-path") {
@@ -116,6 +154,46 @@ function parseArgs(args: string[]): InstallCaddyOptions {
   }
 
   return options;
+}
+
+async function isSetupComplete(options: InstallCaddyOptions): Promise<boolean> {
+  const config = await readRunningCaddyConfig().catch(() => undefined);
+  const listen = config?.apps?.http?.servers?.[DEFAULT_CADDY_SERVER_NAME]?.listen;
+  return Array.isArray(listen) && listen.includes(`:${options.port}`);
+}
+
+async function readRunningCaddyConfig(): Promise<CaddyConfig> {
+  const response = await fetch(`${DEFAULT_ADMIN_URL}/config`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(750),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Caddy Admin API returned ${response.status}`);
+  }
+
+  return await response.json() as CaddyConfig;
+}
+
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+
+    socket.setTimeout(750);
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.connect(port, "127.0.0.1");
+  });
 }
 
 function resolveCaddyPath(explicitPath?: string): string {
@@ -160,6 +238,16 @@ function getBundledCaddyConfigPath(): string {
   }
 
   return bundledConfigPath;
+}
+
+function createBootstrapConfig(configPath: string, port: number): string {
+  const config = JSON.parse(readFileSync(configPath, "utf8")) as CaddyConfig;
+  config.apps ??= {};
+  config.apps.http ??= {};
+  config.apps.http.servers ??= {};
+  config.apps.http.servers[DEFAULT_CADDY_SERVER_NAME] ??= {};
+  config.apps.http.servers[DEFAULT_CADDY_SERVER_NAME].listen = [`:${port}`];
+  return `${JSON.stringify(config, null, 2)}\n`;
 }
 
 function createLaunchDaemonPlist(input: {
@@ -235,6 +323,16 @@ function readValue(args: string[], index: number, flag: string): string {
   return value;
 }
 
+function parsePort(value: string): number {
+  const port = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("--port must be a valid TCP port number");
+  }
+
+  return port;
+}
+
 function printHelp(): void {
   console.log(`nslocalhost
 
@@ -248,6 +346,7 @@ Options:
   --label <label>            LaunchDaemon label. Defaults to ${DEFAULT_CADDY_LABEL}.
   --config-path <path>       Installed config path. Defaults to ${DEFAULT_CADDY_CONFIG_PATH}.
   --plist-path <path>        Installed plist path. Defaults to ${DEFAULT_CADDY_PLIST_PATH}.
+  --port <port>              Public Caddy listener port. Defaults to ${DEFAULT_CADDY_PORT}.
   --stdout-path <path>       stdout log path. Defaults to ${DEFAULT_CADDY_STDOUT_PATH}.
   --stderr-path <path>       stderr log path. Defaults to ${DEFAULT_CADDY_STDERR_PATH}.
 `);

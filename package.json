@@ -1,6 +1,6 @@
 {
   "name": "nslocalhost",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Local dev helper for routing projectname.localhost through a local reverse proxy.",
   "type": "module",
   "repository": {
