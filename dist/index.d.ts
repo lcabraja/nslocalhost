@@ -53,6 +53,9 @@ export type RegisteredRoute = {
     target: string;
     url: string;
 };
+export declare const DEFAULT_ADMIN_URL = "http://127.0.0.1:2019";
+export declare const DEFAULT_CADDY_SERVER = "nslocalhost";
+export declare const DEFAULT_DOMAIN = "localhost";
 export declare function nsLocalhost(options?: NsLocalhostOptions): Plugin;
 export default nsLocalhost;
 export declare function registerCaddyRoute(input: {
@@ -67,4 +70,7 @@ export declare function unregisterCaddyRoute(input: {
     serverName?: string;
     host: string;
 }): Promise<void>;
+export declare function buildPublicHost(projectName: string, domain?: string): string;
+export declare function resolveProjectName(root: string, explicitName?: string): string;
+export declare function openUrl(url: string, warn: (message: string) => void): void;
 //# sourceMappingURL=index.d.ts.map

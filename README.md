@@ -1,8 +1,8 @@
 # nslocalhost
 
-Vite plugin that maps a project hostname such as `projectname.localhost` to the actual port Vite selected at startup.
+Local dev helper that maps a project hostname such as `projectname.localhost` to the actual port your framework selected at startup.
 
-Vite still binds to a free local port. `nslocalhost` registers that port with a local Caddy reverse proxy, so the browser URL can stay stable:
+The dev server still binds to a free local port. `nslocalhost` registers that port with a local Caddy reverse proxy, so the browser URL can stay stable:
 
 ```text
 http://projectname.localhost -> http://127.0.0.1:5173
@@ -57,6 +57,87 @@ When Vite starts, it can choose `3000`, `3001`, `3002`, or any other available p
 http://projectname.localhost
 ```
 
+## Next.js Usage
+
+Next.js does not use Vite plugin hooks, so use the bundled CLI wrapper. It picks the first available port from `3000`, registers Caddy, then runs `next dev` on that selected port.
+
+```json
+{
+  "scripts": {
+    "dev": "nslocalhost next --name projectname"
+  }
+}
+```
+
+Then run:
+
+```sh
+bun run dev
+```
+
+You can pass extra `next dev` flags after `--`:
+
+```json
+{
+  "scripts": {
+    "dev": "nslocalhost next --name projectname -- --webpack"
+  }
+}
+```
+
+If Next.js blocks dev requests for the proxied hostname, add the host to `next.config.ts`:
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  allowedDevOrigins: ["projectname.localhost"],
+};
+
+export default nextConfig;
+```
+
+## Astro Usage
+
+Astro is built with Vite, so use the Vite plugin through Astro's `vite` config field:
+
+```js
+import { defineConfig } from "astro/config";
+import { nsLocalhost } from "nslocalhost";
+
+export default defineConfig({
+  server: {
+    host: "127.0.0.1",
+    port: 4321,
+    open: false,
+    allowedHosts: ["projectname.localhost"],
+  },
+  vite: {
+    plugins: [
+      nsLocalhost({
+        name: "projectname",
+      }),
+    ],
+  },
+});
+```
+
+Astro automatically tries the next available port when the configured port is already busy.
+
+## Generic CLI Usage
+
+For tools that can read `PORT`, `HOST`, or `HOSTNAME` from the environment:
+
+```json
+{
+  "scripts": {
+    "dev": "nslocalhost run --name projectname -- bun run dev:raw"
+  }
+}
+```
+
+The wrapper sets `PORT`, `HOST`, and `HOSTNAME` before starting the command.
+
 ## Options
 
 ```ts
@@ -86,6 +167,24 @@ type NsLocalhostOptions = {
 - `strict`: fail the Vite startup if Caddy registration fails. Defaults to `false`.
 - `hmr`: add HMR defaults for the public host. Defaults to `true`.
 - `log`: print the registered route. Defaults to `true`.
+
+## CLI Options
+
+```text
+nslocalhost next [options] [-- next-dev-args...]
+nslocalhost run [options] -- <command> [args...]
+```
+
+- `--name <name>`: hostname prefix. Defaults to `package.json` name.
+- `--domain <domain>`: hostname suffix. Defaults to `localhost`.
+- `--port <port>`: first port to try. Defaults to `3000`.
+- `--host <host>`: upstream host. Defaults to `127.0.0.1`.
+- `--listen <addr>`: Caddy listen address. Defaults to `:80`.
+- `--caddy-admin-url <url>`: Caddy Admin API. Defaults to `http://127.0.0.1:2019`.
+- `--caddy-server-name <name>`: Caddy server name. Defaults to `nslocalhost`.
+- `--no-open`: do not open the public URL.
+- `--no-cleanup`: keep the Caddy route after shutdown.
+- `--no-strict`: keep running if Caddy registration fails.
 
 ## Notes
 

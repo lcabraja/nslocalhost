@@ -100,9 +100,9 @@ export type RegisteredRoute = {
   url: string;
 };
 
-const DEFAULT_ADMIN_URL = "http://127.0.0.1:2019";
-const DEFAULT_CADDY_SERVER = "nslocalhost";
-const DEFAULT_DOMAIN = "localhost";
+export const DEFAULT_ADMIN_URL = "http://127.0.0.1:2019";
+export const DEFAULT_CADDY_SERVER = "nslocalhost";
+export const DEFAULT_DOMAIN = "localhost";
 
 export function nsLocalhost(options: NsLocalhostOptions = {}): Plugin {
   const state: {
@@ -287,12 +287,12 @@ async function register(
   };
 }
 
-function buildPublicHost(projectName: string, domain = DEFAULT_DOMAIN): string {
+export function buildPublicHost(projectName: string, domain = DEFAULT_DOMAIN): string {
   const cleanDomain = domain.replace(/^\.+|\.+$/g, "");
   return `${projectName}.${cleanDomain}`;
 }
 
-function resolveProjectName(root: string, explicitName?: string): string {
+export function resolveProjectName(root: string, explicitName?: string): string {
   const rawName = explicitName ?? readPackageName(root) ?? path.basename(root);
   const name = sanitizeHostLabel(rawName);
 
@@ -403,7 +403,7 @@ function isAddressInfo(address: string | AddressInfo | null | undefined): addres
   return typeof address === "object" && address !== null && typeof address.port === "number";
 }
 
-function openUrl(url: string, warn: (message: string) => void): void {
+export function openUrl(url: string, warn: (message: string) => void): void {
   const command = os.platform() === "darwin"
     ? "open"
     : os.platform() === "win32"

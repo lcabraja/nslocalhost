@@ -2,9 +2,9 @@ import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-const DEFAULT_ADMIN_URL = "http://127.0.0.1:2019";
-const DEFAULT_CADDY_SERVER = "nslocalhost";
-const DEFAULT_DOMAIN = "localhost";
+export const DEFAULT_ADMIN_URL = "http://127.0.0.1:2019";
+export const DEFAULT_CADDY_SERVER = "nslocalhost";
+export const DEFAULT_DOMAIN = "localhost";
 export function nsLocalhost(options = {}) {
     const state = {};
     return {
@@ -136,11 +136,11 @@ async function register(server, host, options) {
         url: `http://${host}`,
     };
 }
-function buildPublicHost(projectName, domain = DEFAULT_DOMAIN) {
+export function buildPublicHost(projectName, domain = DEFAULT_DOMAIN) {
     const cleanDomain = domain.replace(/^\.+|\.+$/g, "");
     return `${projectName}.${cleanDomain}`;
 }
-function resolveProjectName(root, explicitName) {
+export function resolveProjectName(root, explicitName) {
     const rawName = explicitName ?? readPackageName(root) ?? path.basename(root);
     const name = sanitizeHostLabel(rawName);
     if (!name) {
@@ -228,7 +228,7 @@ function caddyUrl(adminUrl, pathname) {
 function isAddressInfo(address) {
     return typeof address === "object" && address !== null && typeof address.port === "number";
 }
-function openUrl(url, warn) {
+export function openUrl(url, warn) {
     const command = os.platform() === "darwin"
         ? "open"
         : os.platform() === "win32"

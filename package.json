@@ -1,7 +1,7 @@
 {
   "name": "nslocalhost",
-  "version": "0.1.0",
-  "description": "Vite plugin for routing projectname.localhost through a local reverse proxy.",
+  "version": "0.2.0",
+  "description": "Local dev helper for routing projectname.localhost through a local reverse proxy.",
   "type": "module",
   "repository": {
     "type": "git",
@@ -9,6 +9,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "nslocalhost": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -27,6 +30,8 @@
   },
   "keywords": [
     "vite",
+    "next",
+    "astro",
     "localhost",
     "caddy",
     "reverse-proxy"
@@ -34,6 +39,11 @@
   "license": "MIT",
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
