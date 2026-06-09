@@ -37,19 +37,19 @@ The package can install the bundled Caddy bootstrap config as a macOS LaunchDaem
 From a project that already has `nslocalhost` installed:
 
 ```sh
-bunx install-caddy-macos
+bunx nslocalhost
 ```
 
 As a one-shot command from GitHub:
 
 ```sh
-bunx --package git+https://github.com/lcabraja/nslocalhost.git install-caddy-macos
+bunx --package git+https://github.com/lcabraja/nslocalhost.git nslocalhost
 ```
 
 If Caddy is not in `PATH`:
 
 ```sh
-bunx --package git+https://github.com/lcabraja/nslocalhost.git install-caddy-macos --path-to-caddy /opt/homebrew/bin/caddy
+bunx --package git+https://github.com/lcabraja/nslocalhost.git nslocalhost --path-to-caddy /opt/homebrew/bin/caddy
 ```
 
 The installer writes:

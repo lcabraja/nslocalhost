@@ -31,7 +31,7 @@ const DEFAULT_CADDY_STDERR_PATH = "/var/log/nslocalhost-caddy.error.log";
 
 void main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`install-caddy-macos: ${message}`);
+  console.error(`nslocalhost: ${message}`);
   process.exitCode = 1;
 });
 
@@ -73,11 +73,11 @@ async function installCaddyMacos(options: InstallCaddyOptions): Promise<void> {
     rmSync(tempDir, { force: true, recursive: true });
   }
 
-  console.log(`install-caddy-macos: installed ${options.label}`);
-  console.log(`install-caddy-macos: caddy: ${caddyPath}`);
-  console.log(`install-caddy-macos: config: ${options.configPath}`);
-  console.log(`install-caddy-macos: logs: ${options.stdoutPath}, ${options.stderrPath}`);
-  console.log(`install-caddy-macos: admin API: ${DEFAULT_ADMIN_URL}`);
+  console.log(`nslocalhost: installed ${options.label}`);
+  console.log(`nslocalhost: caddy: ${caddyPath}`);
+  console.log(`nslocalhost: config: ${options.configPath}`);
+  console.log(`nslocalhost: logs: ${options.stdoutPath}, ${options.stderrPath}`);
+  console.log(`nslocalhost: admin API: ${DEFAULT_ADMIN_URL}`);
 }
 
 function parseArgs(args: string[]): InstallCaddyOptions {
@@ -236,12 +236,12 @@ function readValue(args: string[], index: number, flag: string): string {
 }
 
 function printHelp(): void {
-  console.log(`install-caddy-macos
+  console.log(`nslocalhost
 
 Installs the bundled nslocalhost Caddy bootstrap config as a macOS LaunchDaemon.
 
 Usage:
-  install-caddy-macos [options]
+  nslocalhost [options]
 
 Options:
   --path-to-caddy <path>     Caddy executable to use. Required when caddy is not in PATH.

@@ -1,6 +1,6 @@
 {
   "name": "nslocalhost",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local dev helper for routing projectname.localhost through a local reverse proxy.",
   "type": "module",
   "repository": {
@@ -10,7 +10,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "install-caddy-macos": "./dist/install-caddy-macos.js"
+    "nslocalhost": "./dist/install-caddy-macos.js"
   },
   "exports": {
     ".": {
