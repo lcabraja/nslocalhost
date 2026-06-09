@@ -65,22 +65,39 @@ Your normal dev script stays normal:
 
 ```json
 {
+  "nslocalhost": {
+    "subdomain": "projectname",
+    "domain": "localhost"
+  },
   "scripts": {
     "dev": "next dev"
   }
 }
 ```
 
+`domain` is optional and defaults to `localhost`.
+
+Create one shared local config file:
+
+```ts
+// nslocalhost.config.ts
+import { defineNsLocalhostConfig } from "nslocalhost/next";
+import packageJson from "./package.json";
+
+export const localdev = defineNsLocalhostConfig({
+  packageJson,
+  caddyAdminUrl: "http://127.0.0.1:2019",
+  publicPort: 80,
+});
+```
+
 Add `middleware.ts` at the root of your Next app, or inside `src` if your app uses `src`:
 
 ```ts
 import { nsLocalhostMiddleware } from "nslocalhost/next";
+import { localdev } from "./nslocalhost.config";
 
-export const middleware = nsLocalhostMiddleware({
-  name: "projectname",
-  caddyAdminUrl: "http://127.0.0.1:2019",
-  publicPort: 80,
-});
+export const middleware = nsLocalhostMiddleware(localdev);
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
@@ -91,9 +108,10 @@ Add the dev origin to `next.config.ts`:
 
 ```ts
 import type { NextConfig } from "next";
+import { localdev } from "./nslocalhost.config";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["projectname.localhost"],
+  allowedDevOrigins: [localdev.host],
 };
 
 export default nextConfig;
@@ -180,7 +198,15 @@ type NsLocalhostOptions = {
 
 ```ts
 type NsLocalhostNextOptions = {
+  packageJson?: {
+    name?: unknown;
+    nslocalhost?: {
+      subdomain?: unknown;
+      domain?: unknown;
+    };
+  };
   name?: string;
+  subdomain?: string;
   host?: string;
   domain?: string;
   publicScheme?: "http" | "https";
@@ -196,9 +222,11 @@ type NsLocalhostNextOptions = {
 };
 ```
 
-- `name`: hostname prefix. Required unless `host` is provided.
+- `packageJson`: consuming app package metadata. Reads `nslocalhost.subdomain`, `nslocalhost.domain`, and then `name` as fallback.
+- `name`: hostname prefix. Overrides `packageJson.nslocalhost.subdomain`.
+- `subdomain`: hostname prefix. Overrides `packageJson.nslocalhost.subdomain`.
 - `host`: full public hostname, for example `projectname.localhost`.
-- `domain`: hostname suffix used with `name`. Defaults to `localhost`.
+- `domain`: hostname suffix used with `subdomain` or `name`. Overrides `packageJson.nslocalhost.domain` and defaults to `localhost`.
 - `publicScheme`: public Caddy scheme used for verification. Defaults to `http`.
 - `publicPort`: public Caddy port used for verification. Defaults to `80`.
 - `caddyAdminUrl`: Caddy Admin API. Defaults to `http://127.0.0.1:2019`.

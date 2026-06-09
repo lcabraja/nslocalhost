@@ -3,6 +3,16 @@ const DEFAULT_CADDY_SERVER = "nslocalhost";
 const DEFAULT_DOMAIN = "localhost";
 const DEFAULT_PROBE_PATH = "/__nslocalhost_probe";
 const registrations = new Map();
+export function defineNsLocalhostConfig(options) {
+    const naming = resolveNaming(options);
+    return {
+        ...options,
+        name: options.name ?? naming.subdomain,
+        subdomain: options.subdomain ?? options.name ?? naming.subdomain,
+        domain: options.domain ?? naming.domain,
+        host: options.host ?? buildPublicHost(naming.subdomain, naming.domain),
+    };
+}
 export function nsLocalhostMiddleware(options = {}) {
     return (request, event) => {
         const settings = resolveOptions(options);
@@ -25,13 +35,16 @@ export function nsLocalhostMiddleware(options = {}) {
 }
 export default nsLocalhostMiddleware;
 function resolveOptions(options) {
-    const host = options.host ?? buildPublicHost(resolveName(options.name), options.domain);
+    const config = defineNsLocalhostConfig(options);
+    const host = config.host;
     const probeToken = options.probeToken ?? `nslocalhost:${host}`;
     const publicScheme = options.publicScheme ?? "http";
     return {
-        name: options.name ?? host.split(".")[0] ?? "app",
+        packageJson: options.packageJson ?? {},
+        name: config.name ?? config.subdomain,
+        subdomain: config.subdomain,
         host,
-        domain: options.domain ?? DEFAULT_DOMAIN,
+        domain: config.domain ?? DEFAULT_DOMAIN,
         publicScheme,
         publicPort: options.publicPort ?? (publicScheme === "https" ? 443 : 80),
         caddyAdminUrl: options.caddyAdminUrl ?? DEFAULT_ADMIN_URL,
@@ -217,6 +230,25 @@ function resolveName(name) {
         throw new Error("nslocalhost Next middleware requires either name or host");
     }
     return resolved;
+}
+function resolveNaming(options) {
+    const packageConfig = options.packageJson?.nslocalhost;
+    const rawSubdomain = options.subdomain
+        ?? options.name
+        ?? stringValue(packageConfig?.subdomain)
+        ?? stringValue(options.packageJson?.name)
+        ?? options.host?.split(".")[0];
+    const subdomain = sanitizeHostLabel(rawSubdomain ?? "");
+    if (!subdomain) {
+        throw new Error("nslocalhost Next middleware requires packageJson.nslocalhost.subdomain, packageJson.name, name, subdomain, or host");
+    }
+    return {
+        subdomain,
+        domain: options.domain ?? stringValue(packageConfig?.domain) ?? DEFAULT_DOMAIN,
+    };
+}
+function stringValue(value) {
+    return typeof value === "string" && value.trim() ? value : undefined;
 }
 function sanitizeHostLabel(name) {
     return name

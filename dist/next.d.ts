@@ -6,9 +6,18 @@ export type NsLocalhostNextEvent = {
 };
 export type NsLocalhostNextOptions = {
     /**
-     * Project label used for the hostname. Required unless host is provided.
+     * Consuming app package metadata. Reads nslocalhost.subdomain,
+     * nslocalhost.domain, and name.
+     */
+    packageJson?: NsLocalhostPackageJson;
+    /**
+     * Project label used for the hostname. Overrides packageJson.nslocalhost.subdomain.
      */
     name?: string;
+    /**
+     * Project label used for the hostname. Overrides packageJson.nslocalhost.subdomain.
+     */
+    subdomain?: string;
     /**
      * Full public hostname, for example projectname.localhost.
      */
@@ -58,6 +67,28 @@ export type NsLocalhostNextOptions = {
      */
     warn?: (message: string) => void;
 };
+export type NsLocalhostPackageJson = {
+    name?: unknown;
+    nslocalhost?: {
+        subdomain?: unknown;
+        domain?: unknown;
+    };
+};
+export type NsLocalhostNextConfig = NsLocalhostNextOptions & {
+    /**
+     * Resolved public hostname prefix, for example projectname.
+     */
+    subdomain: string;
+    /**
+     * Resolved public hostname suffix, for example localhost.
+     */
+    domain: string;
+    /**
+     * Resolved public hostname, for example projectname.localhost.
+     */
+    host: string;
+};
+export declare function defineNsLocalhostConfig(options: NsLocalhostNextOptions): NsLocalhostNextConfig;
 export declare function nsLocalhostMiddleware(options?: NsLocalhostNextOptions): (request: NsLocalhostNextRequest, event?: NsLocalhostNextEvent) => Response | undefined;
 export default nsLocalhostMiddleware;
 //# sourceMappingURL=next.d.ts.map

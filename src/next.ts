@@ -32,9 +32,20 @@ export type NsLocalhostNextEvent = {
 
 export type NsLocalhostNextOptions = {
   /**
-   * Project label used for the hostname. Required unless host is provided.
+   * Consuming app package metadata. Reads nslocalhost.subdomain,
+   * nslocalhost.domain, and name.
+   */
+  packageJson?: NsLocalhostPackageJson;
+
+  /**
+   * Project label used for the hostname. Overrides packageJson.nslocalhost.subdomain.
    */
   name?: string;
+
+  /**
+   * Project label used for the hostname. Overrides packageJson.nslocalhost.subdomain.
+   */
+  subdomain?: string;
 
   /**
    * Full public hostname, for example projectname.localhost.
@@ -97,6 +108,31 @@ export type NsLocalhostNextOptions = {
   warn?: (message: string) => void;
 };
 
+export type NsLocalhostPackageJson = {
+  name?: unknown;
+  nslocalhost?: {
+    subdomain?: unknown;
+    domain?: unknown;
+  };
+};
+
+export type NsLocalhostNextConfig = NsLocalhostNextOptions & {
+  /**
+   * Resolved public hostname prefix, for example projectname.
+   */
+  subdomain: string;
+
+  /**
+   * Resolved public hostname suffix, for example localhost.
+   */
+  domain: string;
+
+  /**
+   * Resolved public hostname, for example projectname.localhost.
+   */
+  host: string;
+};
+
 type RegisterInput = {
   adminUrl: string;
   serverName: string;
@@ -111,6 +147,20 @@ const DEFAULT_DOMAIN = "localhost";
 const DEFAULT_PROBE_PATH = "/__nslocalhost_probe";
 
 const registrations = new Map<string, Promise<void>>();
+
+export function defineNsLocalhostConfig(
+  options: NsLocalhostNextOptions,
+): NsLocalhostNextConfig {
+  const naming = resolveNaming(options);
+
+  return {
+    ...options,
+    name: options.name ?? naming.subdomain,
+    subdomain: options.subdomain ?? options.name ?? naming.subdomain,
+    domain: options.domain ?? naming.domain,
+    host: options.host ?? buildPublicHost(naming.subdomain, naming.domain),
+  };
+}
 
 export function nsLocalhostMiddleware(options: NsLocalhostNextOptions = {}) {
   return (
@@ -143,14 +193,17 @@ export function nsLocalhostMiddleware(options: NsLocalhostNextOptions = {}) {
 export default nsLocalhostMiddleware;
 
 function resolveOptions(options: NsLocalhostNextOptions): Required<NsLocalhostNextOptions> {
-  const host = options.host ?? buildPublicHost(resolveName(options.name), options.domain);
+  const config = defineNsLocalhostConfig(options);
+  const host = config.host;
   const probeToken = options.probeToken ?? `nslocalhost:${host}`;
   const publicScheme = options.publicScheme ?? "http";
 
   return {
-    name: options.name ?? host.split(".")[0] ?? "app",
+    packageJson: options.packageJson ?? {},
+    name: config.name ?? config.subdomain,
+    subdomain: config.subdomain,
     host,
-    domain: options.domain ?? DEFAULT_DOMAIN,
+    domain: config.domain ?? DEFAULT_DOMAIN,
     publicScheme,
     publicPort: options.publicPort ?? (publicScheme === "https" ? 443 : 80),
     caddyAdminUrl: options.caddyAdminUrl ?? DEFAULT_ADMIN_URL,
@@ -394,6 +447,29 @@ function resolveName(name: string | undefined): string {
   }
 
   return resolved;
+}
+
+function resolveNaming(options: NsLocalhostNextOptions): { subdomain: string; domain: string } {
+  const packageConfig = options.packageJson?.nslocalhost;
+  const rawSubdomain = options.subdomain
+    ?? options.name
+    ?? stringValue(packageConfig?.subdomain)
+    ?? stringValue(options.packageJson?.name)
+    ?? options.host?.split(".")[0];
+  const subdomain = sanitizeHostLabel(rawSubdomain ?? "");
+
+  if (!subdomain) {
+    throw new Error("nslocalhost Next middleware requires packageJson.nslocalhost.subdomain, packageJson.name, name, subdomain, or host");
+  }
+
+  return {
+    subdomain,
+    domain: options.domain ?? stringValue(packageConfig?.domain) ?? DEFAULT_DOMAIN,
+  };
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
 }
 
 function sanitizeHostLabel(name: string): string {
