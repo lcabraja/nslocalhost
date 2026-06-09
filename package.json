@@ -16,6 +16,7 @@
     }
   },
   "files": [
+    "caddy",
     "dist",
     "README.md"
   ],
