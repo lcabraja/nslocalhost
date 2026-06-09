@@ -59,33 +59,35 @@ http://projectname.localhost
 
 ## Next.js Usage
 
-Next.js does not use Vite plugin hooks, so use the bundled CLI wrapper. It picks the first available port from `3000`, registers Caddy, then runs `next dev` on that selected port.
+Next.js does not use Vite plugin hooks. Use the `nslocalhost/next` middleware helper instead.
+
+Your normal dev script stays normal:
 
 ```json
 {
   "scripts": {
-    "dev": "nslocalhost next --name projectname"
+    "dev": "next dev"
   }
 }
 ```
 
-Then run:
+Add `middleware.ts` at the root of your Next app, or inside `src` if your app uses `src`:
 
-```sh
-bun run dev
+```ts
+import { nsLocalhostMiddleware } from "nslocalhost/next";
+
+export const middleware = nsLocalhostMiddleware({
+  name: "projectname",
+  caddyAdminUrl: "http://127.0.0.1:2019",
+  publicPort: 80,
+});
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
 ```
 
-You can pass extra `next dev` flags after `--`:
-
-```json
-{
-  "scripts": {
-    "dev": "nslocalhost next --name projectname -- --webpack"
-  }
-}
-```
-
-If Next.js blocks dev requests for the proxied hostname, add the host to `next.config.ts`:
+Add the dev origin to `next.config.ts`:
 
 ```ts
 import type { NextConfig } from "next";
@@ -96,6 +98,26 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 ```
+
+Then run:
+
+```sh
+bun run dev
+```
+
+Open the direct Next URL once, for example:
+
+```text
+http://localhost:3000
+```
+
+The middleware will infer the current dev server port from that request, register this route in Caddy, and verify it by requesting a probe URL through Caddy:
+
+```text
+http://projectname.localhost/__nslocalhost_probe
+```
+
+Only the configured middleware answers that probe with the expected token. If Caddy is not running, cannot load config, points to the wrong upstream, or the public hostname does not reach this Next middleware, the dev server console prints a warning prefixed with `[nslocalhost]`.
 
 ## Astro Usage
 
@@ -123,20 +145,6 @@ export default defineConfig({
 ```
 
 Astro automatically tries the next available port when the configured port is already busy.
-
-## Generic CLI Usage
-
-For tools that can read `PORT`, `HOST`, or `HOSTNAME` from the environment:
-
-```json
-{
-  "scripts": {
-    "dev": "nslocalhost run --name projectname -- bun run dev:raw"
-  }
-}
-```
-
-The wrapper sets `PORT`, `HOST`, and `HOSTNAME` before starting the command.
 
 ## Options
 
@@ -168,23 +176,39 @@ type NsLocalhostOptions = {
 - `hmr`: add HMR defaults for the public host. Defaults to `true`.
 - `log`: print the registered route. Defaults to `true`.
 
-## CLI Options
+## Next Middleware Options
 
-```text
-nslocalhost next [options] [-- next-dev-args...]
-nslocalhost run [options] -- <command> [args...]
+```ts
+type NsLocalhostNextOptions = {
+  name?: string;
+  host?: string;
+  domain?: string;
+  publicScheme?: "http" | "https";
+  publicPort?: number;
+  caddyAdminUrl?: string;
+  caddyServerName?: string;
+  listen?: string[];
+  upstreamHost?: string;
+  probePath?: string;
+  probeToken?: string;
+  enabled?: boolean;
+  warn?: (message: string) => void;
+};
 ```
 
-- `--name <name>`: hostname prefix. Defaults to `package.json` name.
-- `--domain <domain>`: hostname suffix. Defaults to `localhost`.
-- `--port <port>`: first port to try. Defaults to `3000`.
-- `--host <host>`: upstream host. Defaults to `127.0.0.1`.
-- `--listen <addr>`: Caddy listen address. Defaults to `:80`.
-- `--caddy-admin-url <url>`: Caddy Admin API. Defaults to `http://127.0.0.1:2019`.
-- `--caddy-server-name <name>`: Caddy server name. Defaults to `nslocalhost`.
-- `--no-open`: do not open the public URL.
-- `--no-cleanup`: keep the Caddy route after shutdown.
-- `--no-strict`: keep running if Caddy registration fails.
+- `name`: hostname prefix. Required unless `host` is provided.
+- `host`: full public hostname, for example `projectname.localhost`.
+- `domain`: hostname suffix used with `name`. Defaults to `localhost`.
+- `publicScheme`: public Caddy scheme used for verification. Defaults to `http`.
+- `publicPort`: public Caddy port used for verification. Defaults to `80`.
+- `caddyAdminUrl`: Caddy Admin API. Defaults to `http://127.0.0.1:2019`.
+- `caddyServerName`: Caddy server name. Defaults to `nslocalhost`.
+- `listen`: Caddy listen addresses used if the server does not exist yet. Defaults to `[":80"]`.
+- `upstreamHost`: override the upstream host registered with Caddy.
+- `probePath`: route used to verify that Caddy reaches this middleware. Defaults to `/__nslocalhost_probe`.
+- `probeToken`: explicit probe token. Defaults to a deterministic route token.
+- `enabled`: keep running without registering when false. Defaults to development only.
+- `warn`: custom warning function. Defaults to `console.warn`.
 
 ## Notes
 
