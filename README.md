@@ -30,6 +30,45 @@ bun run caddy:start
 
 Port `80` usually requires elevated privileges. If you do not want Caddy to bind to `80`, copy `caddy/bootstrap.json`, change the listen address to `":8080"`, configure the plugin with `listen: [":8080"]`, and visit `http://projectname.localhost:8080`.
 
+## Install Caddy As A macOS Service
+
+The package can install the bundled Caddy bootstrap config as a macOS LaunchDaemon. It does not install Caddy itself. The command only proceeds when `caddy` is already available in `PATH`, or when you pass an explicit executable with `--path-to-caddy`.
+
+From a project that already has `nslocalhost` installed:
+
+```sh
+bunx nslocalhost install-caddy-macos
+```
+
+As a one-shot command from GitHub:
+
+```sh
+bunx --package git+https://github.com/lcabraja/nslocalhost.git nslocalhost install-caddy-macos
+```
+
+If Caddy is not in `PATH`:
+
+```sh
+bunx --package git+https://github.com/lcabraja/nslocalhost.git nslocalhost install-caddy-macos --path-to-caddy /opt/homebrew/bin/caddy
+```
+
+The installer writes:
+
+```text
+/Library/Application Support/nslocalhost/caddy/bootstrap.json
+/Library/LaunchDaemons/dev.nslocalhost.caddy.plist
+/var/log/nslocalhost-caddy.log
+/var/log/nslocalhost-caddy.error.log
+```
+
+To stop and remove the service manually:
+
+```sh
+sudo launchctl bootout system /Library/LaunchDaemons/dev.nslocalhost.caddy.plist
+sudo rm /Library/LaunchDaemons/dev.nslocalhost.caddy.plist
+sudo rm -rf "/Library/Application Support/nslocalhost"
+```
+
 ## Vite Usage
 
 ```ts
