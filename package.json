@@ -1,0 +1,42 @@
+{
+  "name": "nslocalhost",
+  "version": "0.1.0",
+  "description": "Vite plugin for routing projectname.localhost through a local reverse proxy.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lcabraja/nslocalhost.git"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "caddy:start": "sudo caddy run --config ./caddy/bootstrap.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "vite",
+    "localhost",
+    "caddy",
+    "reverse-proxy"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}
